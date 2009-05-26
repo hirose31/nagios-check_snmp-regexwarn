@@ -10,7 +10,7 @@ use Test::More;
 use NPTest;
 
 use vars qw($tests);
-BEGIN {$tests = 14; plan tests => $tests}
+BEGIN {$tests = 16; plan tests => $tests}
 
 my $res;
 
@@ -51,6 +51,10 @@ SKIP: {
 		$res = NPTest->testCmd( "./check_snmp -H $host_snmp -C $snmp_community -o host.hrSWRun.hrSWRunTable.hrSWRunEntry.hrSWRunIndex.1 -w  :0 -c 0");
 		cmp_ok( $res->return_code, '==', 2, "Exit CRITICAL when querying hrSWRunIndex.1 and crit-th doesn't apply" ); 
 		like($res->output, '/^SNMP CRITICAL - \*1\*\s.*$/', "String matches SNMP CRITICAL and ouput format");
+
+		$res = NPTest->testCmd( "./check_snmp -H $host_snmp -C $snmp_community -o host.hrSWRun.hrSWRunTable.hrSWRunEntry.hrSWRunIndex.1 -r 1");
+		cmp_ok($res->return_code, '==', 0, "Exit OK regular expression match OK");
+		like($res->output, '/^SNMP OK - 1\s.*$/', "String matches SNMP OK regular expression match OK");
 	}
 
 	SKIP: {
