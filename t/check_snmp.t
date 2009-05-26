@@ -10,7 +10,7 @@ use Test::More;
 use NPTest;
 
 use vars qw($tests);
-BEGIN {$tests = 16; plan tests => $tests}
+BEGIN {$tests = 20; plan tests => $tests}
 
 my $res;
 
@@ -55,6 +55,14 @@ SKIP: {
 		$res = NPTest->testCmd( "./check_snmp -H $host_snmp -C $snmp_community -o host.hrSWRun.hrSWRunTable.hrSWRunEntry.hrSWRunIndex.1 -r 1");
 		cmp_ok($res->return_code, '==', 0, "Exit OK regular expression match OK");
 		like($res->output, '/^SNMP OK - 1\s.*$/', "String matches SNMP OK regular expression match OK");
+
+		$res = NPTest->testCmd( "./check_snmp -H $host_snmp -C $snmp_community -o host.hrSWRun.hrSWRunTable.hrSWRunEntry.hrSWRunIndex.2 -r 1 -w 2");
+		cmp_ok($res->return_code, '==', 1, "Exit WARNING regular expression match OK");
+		like($res->output, '/^SNMP WARNING - 1\s.*$/', "String matches SNMP WARNING regular expression match OK");
+
+		$res = NPTest->testCmd( "./check_snmp -H $host_snmp -C $snmp_community -o host.hrSWRun.hrSWRunTable.hrSWRunEntry.hrSWRunIndex.3 -r 1 -w 2");
+		cmp_ok($res->return_code, '==', 2, "Exit CRITICAL regular expression match OK");
+		like($res->output, '/^SNMP WARNING - 2\s.*$/', "String matches SNMP CRITICAL regular expression match OK");
 	}
 
 	SKIP: {
