@@ -90,12 +90,15 @@ void print_help (void);
 
 #include "regex.h"
 char regex_expect[MAX_INPUT_BUFFER] = "";
+char regex_expect_w[MAX_INPUT_BUFFER] = "";
 regex_t preg;
+regex_t preg_w;
 regmatch_t pmatch[10];
 char timestamp[10] = "";
 char errbuf[MAX_INPUT_BUFFER] = "";
 char perfstr[MAX_INPUT_BUFFER] = "";
 int cflags = REG_EXTENDED | REG_NOSUB | REG_NEWLINE;
+int cflags_w = REG_EXTENDED | REG_NOSUB | REG_NEWLINE;
 int eflags = 0;
 int errcode, excode;
 
@@ -325,18 +328,29 @@ main (int argc, char **argv)
 		}
 
 		/* Process this block for regex matching */
-		else if (eval_method[i] & CRIT_REGEX) {
-			excode = regexec (&preg, response, 10, pmatch, eflags);
+		else if (eval_method[i] & (CRIT_REGEX | WARN_REGEX)) {
+			excode = regexec (&preg_w, response, 10, pmatch, eflags);
 			if (excode == 0) {
-				iresult = STATE_OK;
+				iresult = STATE_WARNING;
 			}
 			else if (excode != REG_NOMATCH) {
-				regerror (excode, &preg, errbuf, MAX_INPUT_BUFFER);
+				regerror (excode, &preg_w, errbuf, MAX_INPUT_BUFFER);
 				printf (_("Execute Error: %s\n"), errbuf);
 				exit (STATE_CRITICAL);
 			}
 			else {
-				iresult = STATE_CRITICAL;
+				excode = regexec (&preg, response, 10, pmatch, eflags);
+				if (excode == 0) {
+					iresult = STATE_OK;
+				}
+				else if (excode != REG_NOMATCH) {
+					regerror (excode, &preg, errbuf, MAX_INPUT_BUFFER);
+					printf (_("Execute Error: %s\n"), errbuf);
+					exit (STATE_CRITICAL);
+				}
+				else {
+					iresult = STATE_CRITICAL;
+				}
 			}
 		}
 
@@ -433,6 +447,8 @@ process_arguments (int argc, char **argv)
 		{"regex", required_argument, 0, 'r'},
 		{"ereg", required_argument, 0, 'r'},
 		{"eregi", required_argument, 0, 'R'},
+		{"eregw", required_argument, 0, 'g'},
+		{"eregwi", required_argument, 0, 'G'},
 		{"label", required_argument, 0, 'l'},
 		{"units", required_argument, 0, 'u'},
 		{"port", required_argument, 0, 'p'},
@@ -462,7 +478,7 @@ process_arguments (int argc, char **argv)
 	}
 
 	while (1) {
-		c = getopt_long (argc, argv, "nhvVt:c:w:H:C:o:e:E:d:D:s:t:R:r:l:u:p:m:P:L:U:a:A:X:",
+		c = getopt_long (argc, argv, "nhvVt:c:w:H:C:o:e:E:d:D:s:t:R:r:G:g:l:u:p:m:P:L:U:a:A:X:",
 									 longopts, &option);
 
 		if (c == -1 || c == EOF)
@@ -595,6 +611,21 @@ process_arguments (int argc, char **argv)
 				return ERROR;
 			}
 			eval_method[jj++] = CRIT_REGEX;
+			ii++;
+			break;
+		case 'G':									/* regex warning */
+			cflags_w = REG_ICASE;
+		case 'g':									/* regex warning */
+			cflags_w |= REG_EXTENDED | REG_NOSUB | REG_NEWLINE;
+			strncpy (regex_expect_w, optarg, sizeof (regex_expect_w) - 1);
+			regex_expect_w[sizeof (regex_expect_w) - 1] = 0;
+			errcode = regcomp (&preg_w, regex_expect_w, cflags_w);
+			if (errcode != 0) {
+				regerror (errcode, &preg_w, errbuf, MAX_INPUT_BUFFER);
+				printf (_("Could Not Compile Regular Expression"));
+				return ERROR;
+			}
+			eval_method[jj++] = WARN_REGEX;
 			ii++;
 			break;
 
@@ -988,6 +1019,10 @@ print_help (void)
   printf ("    %s\n", _("Return OK state (for that OID) if extended regular expression REGEX matches"));
   printf (" %s\n", "-R, --eregi=REGEX");
   printf ("    %s\n", _("Return OK state (for that OID) if case-insensitive extended REGEX matches"));
+  printf (" %s\n", "-g, --eregw=REGEX");
+  printf ("    %s\n", _("Return WARNING state (for that OID) if extended regular expression REGEX matches"));
+  printf (" %s\n", "-G, --eregwi=REGEX");
+  printf ("    %s\n", _("Return WARNING state (for that OID) if case-insensitive extended REGEX matches"));
   printf (" %s\n", "-l, --label=STRING");
   printf ("    %s\n", _("Prefix label for output from plugin (default -s 'SNMP')"));
 
@@ -1040,6 +1075,7 @@ print_usage (void)
   printf (_("Usage:"));
 	printf ("%s -H <ip_address> -o <OID> [-w warn_range] [-c crit_range]\n",progname);
   printf ("[-C community] [-s string] [-r regex] [-R regexi] [-t timeout] [-e retries]\n");
+  printf ("[-g regex] [-G regexi]\n");
   printf ("[-l label] [-u units] [-p port-number] [-d delimiter] [-D output-delimiter]\n");
   printf ("[-m miblist] [-P snmp version] [-L seclevel] [-U secname] [-a authproto]\n");
   printf ("[-A authpasswd] [-X privpasswd]\n");
