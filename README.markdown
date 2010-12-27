@@ -4,6 +4,11 @@ nagios-check_snmp-regexwarn
 This is extended check_snmp plugin to return WARNING state if regular
 expression matches.
 
+requires
+---------------
+
+* nagios-plugin 1.4.14 or higher
+
 usage
 ---------------
 
